@@ -1,0 +1,72 @@
+<?xml version='1.0' encoding='UTF-8'?>
+<project>
+  <actions/>
+  <description>Build AOSP kernel after pulling changes from local_manifest.&#xd;
+&#xd;
+Note: The following flags have to agree: local_manifest, affected_projects, and remote_branch. See notes in each flag for reference.</description>
+  <keepDependencies>false</keepDependencies>
+  <properties>
+    <hudson.model.ParametersDefinitionProperty>
+      <parameterDefinitions>
+        <hudson.model.StringParameterDefinition>
+          <name>kernel_project</name>
+          <description></description>
+          <defaultValue>kernel/goldfish</defaultValue>
+        </hudson.model.StringParameterDefinition>
+        <hudson.model.StringParameterDefinition>
+          <name>aosp_branch</name>
+          <description></description>
+          <defaultValue>aosp/android-goldfish-3.4</defaultValue>
+        </hudson.model.StringParameterDefinition>
+        <hudson.model.TextParameterDefinition>
+          <name>local_manifest</name>
+          <description>*TODO* kernel projects not yet on github
+The full contents local_manifest.xml. Normally you&apos;ll want to add the projects mentioned in this manifest to the $affected_projects flag.
+
+Right after an initial repo sync with android.googlesource.com, the local_manifest is copied to .repo/local_manifest.xml, and we do another repo sync.
+
+After that, we check out the specified development branch for each affected project. See documentation for remote_branch and affected_projects</description>
+          <defaultValue>&lt;manifest&gt;
+  &lt;remote name=&quot;github&quot; fetch=&quot;https://github.com&quot; /&gt;
+&lt;!--  &lt;remove-project name=&quot;kernel/goldfish&quot; /&gt; --&gt;
+&lt;!--  &lt;project path=&quot;kernel/goldfish&quot; remote=&quot;github&quot; name=&quot;nesl/kernel_goldfish&quot; revision=&quot;master&quot; /&gt; --&gt;
+&lt;/manifest&gt;	  </defaultValue>
+        </hudson.model.TextParameterDefinition>
+        <hudson.model.StringParameterDefinition>
+          <name>nesl_branch</name>
+          <description>*TODO* kernel projects not yet on github, checkout from aosp for now.</description>
+          <defaultValue>aosp/android-goldfish-3.4</defaultValue>
+        </hudson.model.StringParameterDefinition>
+        <hudson.model.StringParameterDefinition>
+          <name>arch</name>
+          <description></description>
+          <defaultValue>x86</defaultValue>
+        </hudson.model.StringParameterDefinition>
+        <hudson.model.StringParameterDefinition>
+          <name>cross_compile</name>
+          <description></description>
+          <defaultValue></defaultValue>
+        </hudson.model.StringParameterDefinition>
+        <hudson.model.StringParameterDefinition>
+          <name>defconfig</name>
+          <description></description>
+          <defaultValue>goldfish_defconfig</defaultValue>
+        </hudson.model.StringParameterDefinition>
+      </parameterDefinitions>
+    </hudson.model.ParametersDefinitionProperty>
+  </properties>
+  <scm class="hudson.scm.NullSCM"/>
+  <canRoam>true</canRoam>
+  <disabled>false</disabled>
+  <blockBuildWhenDownstreamBuilding>false</blockBuildWhenDownstreamBuilding>
+  <blockBuildWhenUpstreamBuilding>false</blockBuildWhenUpstreamBuilding>
+  <triggers class="vector"/>
+  <concurrentBuild>false</concurrentBuild>
+  <builders>
+    <hudson.tasks.Shell>
+      <command>/aosp/bin/jenkins_make_kernel.sh</command>
+    </hudson.tasks.Shell>
+  </builders>
+  <publishers/>
+  <buildWrappers/>
+</project>
