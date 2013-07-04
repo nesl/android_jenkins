@@ -30,15 +30,17 @@ LOG_DIR=$WORKSPACE/logs/${BRANCH_JOB_NUMBERED}
 BUILD_DIR=/scratch/aosp/${BRANCH_JOB}
 COPY_DIR=$WORKSPACE/copy/${BRANCH_JOB_NUMBERED}
 
-# For convenienve, print urls of log files.
-echo ${JOB_URL}ws/logs/${BRANCH_JOB_NUMBERED}/
+# For convenience, print urls of log files.
+echo -=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=
+echo LOGS: ${JOB_URL}ws/logs/${BRANCH_JOB_NUMBERED}/
+echo ==USEFUL LOG FILES==
 for logfile in repo_init repo_sync_aosp local_manifest.xml repo_sync_nesl \
                repo_dev_checkout build_clean build_real
                #build_api build_clean2
 do
   echo ${JOB_URL}ws/logs/${BRANCH_JOB_NUMBERED}/$logfile/'*view*'/
 done
-
+echo -=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=
 
 set -v -x
 
@@ -56,18 +58,14 @@ cd ${BUILD_DIR}
 # Remove .repo/local_manifest.xml and .repo/local_manifests directory.
 rm -rf .repo/local_manifest*
 
-# In case repo sync or build fails, try:
-# rm -rf $dev_projects  # Remove just files in affected projects.
-# rm -rf *  # Remove all files in working tree.
-
 $ANNOTATE $REPO init -u $MIRROR/platform/manifest.git -b ${init_tag} \
     >${LOG_DIR}/repo_init 2>&1
-$ANNOTATE $REPO sync -j8 -q >${LOG_DIR}/repo_sync_aosp 2>&1
+$ANNOTATE $REPO sync -j8 >${LOG_DIR}/repo_sync_aosp 2>&1
 
 mkdir .repo/local_manifests
 echo "${local_manifest}" | tee -a ${LOG_DIR}/override.xml \
     > .repo/local_manifests/override.xml
-$ANNOTATE $REPO sync -j8 -q >${LOG_DIR}/repo_sync_nesl 2>&1
+$ANNOTATE $REPO sync -j8 >${LOG_DIR}/repo_sync_nesl 2>&1
 $ANNOTATE $REPO forall $dev_projects \
     -c 'git checkout $(git rev-parse $dev_refspec)' \
     >${LOG_DIR}/repo_dev_checkout 2>&1
