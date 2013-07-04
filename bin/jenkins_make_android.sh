@@ -14,6 +14,7 @@ export USE_CCACHE=1
 export CCACHE_DIR=/scratch/aosp/ccache
 
 touch ${CCACHE_DIR}  # If we can't touch it, then the ccache is useless!
+
 # i.e. adjust permissions to be able to touch CCACHE_DIR.
 
 PUBLIC_FQDN=$(curl -s http://169.254.169.254/latest/meta-data/public-hostname)
@@ -70,7 +71,7 @@ $ANNOTATE $REPO forall $dev_projects \
     -c 'git checkout $(git rev-parse $dev_refspec)' \
     >${LOG_DIR}/repo_dev_checkout 2>&1
 
-(
+( \
   ls -la; \
   $REPO forall -c 'echo $REPO_PROJECT && git log -n1 && echo "======"' \
 ) > ${LOG_DIR}/info_tree
@@ -79,9 +80,14 @@ set +v +x
 
 echo -=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=
 source build/envsetup.sh
+prebuilts/misc/linux-x86/ccache/ccache -M 100G
 lunch $lunch
-env > ${LOG_DIR}/info_lunch_env
-java -version
+( \
+  env; \
+  java -version; \
+  echo "======"; \
+  /aosp/golden_clone/prebuilts/misc/linux-x86/ccache/ccache -s; \
+) > ${LOG_DIR}/info_lunch_env
 
 echo -=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=
 set -v -e
