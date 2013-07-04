@@ -39,46 +39,51 @@ do
   echo ${JOB_URL}ws/logs/${BRANCH_JOB_NUMBERED}/$logfile/'*view*'/
 done
 
-echo -=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=
-env
-java -version
-echo -=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=
 
 set -v -x
 
 rm -rf ${LOG_DIR} 
 mkdir -p ${LOG_DIR}
 
+(env; java -version) > ${LOG_DIR}/info_env
+
 mkdir -p ${BUILD_DIR} 
 rm -f $WORKSPACE/${BRANCH_JOB}
 ln -s ${BUILD_DIR} $WORKSPACE/${BRANCH_JOB}
 
 cd ${BUILD_DIR}
-rm -f .repo/local_manifest*
 
-#rm -rf $dev_projects
+# Remove .repo/local_manifest.xml and .repo/local_manifests directory.
+rm -rf .repo/local_manifest*
+
+# In case repo sync or build fails, try:
+# rm -rf $dev_projects  # Remove just files in affected projects.
+# rm -rf *  # Remove all files in working tree.
 
 $ANNOTATE $REPO init -u $MIRROR/platform/manifest.git -b ${init_tag} \
     >${LOG_DIR}/repo_init 2>&1
-$ANNOTATE $REPO sync -j8 >${LOG_DIR}/repo_sync_aosp 2>&1
+$ANNOTATE $REPO sync -j8 -q >${LOG_DIR}/repo_sync_aosp 2>&1
 
-echo "${local_manifest}" | tee -a ${LOG_DIR}/local_manifests \
-    > .repo/local_manifests
-$ANNOTATE $REPO sync -j8 >${LOG_DIR}/repo_sync_nesl 2>&1
+mkdir .repo/local_manifests
+echo "${local_manifest}" | tee -a ${LOG_DIR}/override.xml \
+    > .repo/local_manifests/override.xml
+$ANNOTATE $REPO sync -j8 -q >${LOG_DIR}/repo_sync_nesl 2>&1
 $ANNOTATE $REPO forall $dev_projects \
     -c 'git checkout $(git rev-parse $dev_refspec)' \
     >${LOG_DIR}/repo_dev_checkout 2>&1
-set +v +x
 
-echo -=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=
-ls -la
+(
+  ls -la; \
+  $REPO forall -c 'echo $REPO_PROJECT && git log -n1 && echo "======"' \
+) > ${LOG_DIR}/info_tree
+
+set +v +x
 
 echo -=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=
 source build/envsetup.sh
 lunch $lunch
-env
+env > ${LOG_DIR}/info_lunch_env
 java -version
-echo -=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=
 
 echo -=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=
 set -v -e
