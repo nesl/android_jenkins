@@ -9,15 +9,15 @@
 # lunch
 
 set -e
-export LANG=en_US.UTF-8  # The default ASCII encoding results in javac errors.
+export LANG=en_US.UTF-8  # The default ASCII encoding causes javac errors.
+
 export USE_CCACHE=1
 export CCACHE_DIR=/scratch/aosp/ccache
+# i.e. adjust permissions to be able to touch CCACHE_DIR, otherwise useless.
+touch ${CCACHE_DIR}
 
-touch ${CCACHE_DIR}  # If we can't touch it, then the ccache is useless!
-
-# i.e. adjust permissions to be able to touch CCACHE_DIR.
-
-PUBLIC_FQDN=$(curl -s http://169.254.169.254/latest/meta-data/public-hostname)
+PUBLIC_FQDN=$(curl -s \
+    http://169.254.169.254/latest/meta-data/public-hostname)
 JOB_URL=http://${PUBLIC_FQDN}:8080/job/${JOB_NAME}/
 REPO='/aosp/bin/repo'
 #ANNOTATE="annotate-output +%Y-%m-%d-%H:%M:%S.%N"
@@ -32,7 +32,8 @@ BUILD_DIR=/scratch/aosp/${BRANCH_JOB}
 COPY_DIR=$WORKSPACE/copy/${BRANCH_JOB_NUMBERED}
 
 # For convenience, print urls of log files.
-echo -=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=
+echo -=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-
+echo SYSTEM STATS: http://${PUBLIC_FQDN}:8000/cgi/dash
 echo LOGS: ${JOB_URL}ws/logs/${BRANCH_JOB_NUMBERED}/
 echo ==USEFUL LOG FILES==
 for logfile in repo_init repo_sync_aosp local_manifest.xml repo_sync_nesl \
@@ -41,9 +42,9 @@ for logfile in repo_init repo_sync_aosp local_manifest.xml repo_sync_nesl \
 do
   echo ${JOB_URL}ws/logs/${BRANCH_JOB_NUMBERED}/$logfile/'*view*'/
 done
-echo -=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=
+echo -=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-
 
-set -v -x
+set -v
 
 rm -rf ${LOG_DIR} 
 mkdir -p ${LOG_DIR}
@@ -74,11 +75,11 @@ $ANNOTATE $REPO forall $dev_projects \
 ( \
   ls -la; \
   $REPO forall -c 'echo $REPO_PROJECT && git log -n1 && echo "======"' \
-) > ${LOG_DIR}/info_tree
+) > ${LOG_DIR}/info_tree 2>&1
 
-set +v +x
+set +v
 
-echo -=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=
+echo -=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-==
 source build/envsetup.sh
 prebuilts/misc/linux-x86/ccache/ccache -M 100G
 lunch $lunch
@@ -87,14 +88,14 @@ lunch $lunch
   java -version; \
   echo "======"; \
   /aosp/golden_clone/prebuilts/misc/linux-x86/ccache/ccache -s; \
-) > ${LOG_DIR}/info_lunch_env
+) > ${LOG_DIR}/info_lunch_env 2>&1
 
-echo -=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=
+echo -=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-
 set -v -e
 $ANNOTATE make clobber >${LOG_DIR}/build_clean 2>&1
 #$ANNOTATE make j8 update-api >${LOG_DIR}/build_api 2>&1
 #$ANNOTATE make clobber >${LOG_DIR}/build_clean2 2>&1
-$ANNOTATE make -j20 >${LOG_DIR}/build_real 2>&1
+$ANNOTATE make -j16 >${LOG_DIR}/build_real 2>&1
 touch ${LOG_DIR}/SUCCESSFUL
 
 mkdir -p ${COPY_DIR}
