@@ -3,7 +3,7 @@
   <actions/>
   <description>Build AOSP after pulling changes from local_manifest.&#xd;
 &#xd;
-Note: The following flags have to agree: local_manifest, affected_projects, and remote_branch. See notes in each flag for reference.</description>
+Note: The following flags have to agree: local_manifest, dev_projects, and dev_refspec. See notes in each flag for reference.</description>
   <keepDependencies>false</keepDependencies>
   <properties>
     <hudson.model.ParametersDefinitionProperty>
@@ -11,29 +11,40 @@ Note: The following flags have to agree: local_manifest, affected_projects, and 
         <hudson.model.StringParameterDefinition>
           <name>init_tag</name>
           <description>The tag of the android manifest used in repo init, i.e.
-repo init -u https://android.googlesource.com/platform/manifest -b manifest_tag</description>
+repo init -u https://android.googlesource.com/platform/manifest -b init_tag</description>
           <defaultValue>android-4.2.2_r1</defaultValue>
         </hudson.model.StringParameterDefinition>
         <hudson.model.StringParameterDefinition>
           <name>dev_refspec</name>
-          <description>This is the development branch that will be checked out for *only* the affected_projects, i.e.
-repo forall $affected_projects -c &apos;git checkout $(git rev-parse $remote_branch)&apos;</description>
+          <description>This is the development branch that will be checked out for *only* the dev_projects, i.e.
+repo forall $dev_projects -c &apos;git checkout $(git rev-parse $dev_refspec)&apos;</description>
           <defaultValue>github/jb-sensor-firewall</defaultValue>
         </hudson.model.StringParameterDefinition>
         <hudson.model.TextParameterDefinition>
           <name>local_manifest</name>
-          <description>The full contents local_manifest.xml. Normally you&apos;ll want to add the projects mentioned in this manifest to the $affected_projects flag.
+          <description>The full contents local_manifest.xml. Normally you&apos;ll want to add the projects mentioned in this manifest to the $dev_projects flag.
 
 Right after an initial repo sync with android.googlesource.com, the local_manifest is copied to .repo/local_manifest.xml, and we do another repo sync.
 
-After that, we check out the specified development branch for each affected project. See documentation for remote_branch and affected_projects</description>
-          <defaultValue>&lt;manifest&gt;  &lt;remote name=&quot;github&quot; fetch=&quot;https://github.com&quot; /&gt;  &lt;remove-project name=&quot;platform/frameworks/native&quot; /&gt;  &lt;project path=&quot;frameworks/native&quot; remote=&quot;github&quot; name=&quot;nesl/platform_frameworks_native&quot; revision=&quot;refs/tags/android-4.2.2_r1&quot; /&gt;  &lt;remove-project name=&quot;platform/frameworks/base&quot; /&gt;  &lt;project path=&quot;frameworks/base&quot; remote=&quot;github&quot; name=&quot;nesl/platform_frameworks_base&quot; revision=&quot;refs/tags/android-4.2.2_r1&quot; /&gt;&lt;/manifest&gt;	  </defaultValue>
+After that, we check out the specified development branch for each dev project. See documentation for dev_refspec and dev_projects</description>
+          <defaultValue>
+&lt;manifest&gt;
+&lt;remote name=&quot;github&quot; fetch=&quot;https://github.com&quot; /&gt;
+
+&lt;remove-project name=&quot;platform/build&quot; /&gt;  &lt;project path=&quot;build&quot; remote=&quot;github&quot; name=&quot;nesl/platform_build&quot; revision=&quot;refs/tags/android-4.2.2_r1&quot; /&gt;
+
+&lt;remove-project name=&quot;platform/frameworks/native&quot; /&gt;  &lt;project path=&quot;frameworks/native&quot; remote=&quot;github&quot; name=&quot;nesl/platform_frameworks_native&quot; revision=&quot;refs/tags/android-4.2.2_r1&quot; /&gt;
+
+&lt;remove-project name=&quot;platform/frameworks/base&quot; /&gt;  &lt;project path=&quot;frameworks/base&quot; remote=&quot;github&quot; name=&quot;nesl/platform_frameworks_base&quot; revision=&quot;refs/tags/android-4.2.2_r1&quot; /&gt;
+
+&lt;/manifest&gt;
+	  </defaultValue>
         </hudson.model.TextParameterDefinition>
         <hudson.model.StringParameterDefinition>
           <name>dev_projects</name>
-          <description>*Space separated* list of projects for which we will sync changes from the $remote_branch, i.e.
-repo forall $affected_projects -c &apos;git checkout $(git rev-parse $remote_branch)&apos;</description>
-          <defaultValue>frameworks/base frameworks/native</defaultValue>
+          <description>*Space separated* list of projects for which we will sync changes from the $dev_refspec, i.e.
+repo forall $dev_projects -c &apos;git checkout $(git rev-parse $dev_refspec)&apos;</description>
+          <defaultValue>platform/build frameworks/base frameworks/native</defaultValue>
         </hudson.model.StringParameterDefinition>
         <hudson.model.StringParameterDefinition>
           <name>lunch</name>
@@ -55,6 +66,12 @@ repo forall $affected_projects -c &apos;git checkout $(git rev-parse $remote_bra
       <command>/aosp/bin/jenkins_make_android.sh</command>
     </hudson.tasks.Shell>
   </builders>
-  <publishers/>
+  <publishers>
+    <hudson.tasks.Mailer plugin="mailer@1.4">
+      <recipients>kastur@gmail.com</recipients>
+      <dontNotifyEveryUnstableBuild>false</dontNotifyEveryUnstableBuild>
+      <sendToIndividuals>false</sendToIndividuals>
+    </hudson.tasks.Mailer>
+  </publishers>
   <buildWrappers/>
 </project>
