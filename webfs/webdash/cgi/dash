@@ -1,0 +1,21 @@
+#!/bin/bash
+printf 'Content-Type: text/html\n\n'
+echo '<pre>'
+echo command:  CCACHE_DIR=/scratch/aosp/ccache /aosp/golden_clone/prebuilts/misc/linux-x86/ccache/ccache -s
+CCACHE_DIR=/scratch/aosp/ccache /aosp/golden_clone/prebuilts/misc/linux-x86/ccache/ccache -s 2>&1
+echo "========================================================================"
+echo command:  uptime 2>&1
+uptime
+echo "========================================================================"
+echo command:  free -m 2>&1
+free -m
+echo "========================================================================"
+echo command: iostat -m
+iostat -m 2>&1
+echo "========================================================================"
+echo command:  top -b -n1
+top -b -n1 2>&1
+echo "========================================================================"
+echo command: pstree
+pstree 2>&1
+echo '</pre>'
