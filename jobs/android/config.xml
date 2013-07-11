@@ -27,8 +27,7 @@ repo forall $dev_projects -c &apos;git checkout $(git rev-parse $dev_refspec)&ap
 Right after an initial repo sync with android.googlesource.com, the local_manifest is copied to .repo/local_manifest.xml, and we do another repo sync.
 
 After that, we check out the specified development branch for each dev project. See documentation for dev_refspec and dev_projects</description>
-          <defaultValue>
-&lt;manifest&gt;
+          <defaultValue>&lt;manifest&gt;
   &lt;remote name=&quot;github&quot; fetch=&quot;https://github.com&quot; /&gt;
   &lt;remove-project name=&quot;platform/build&quot; /&gt;
   &lt;project path=&quot;build&quot; remote=&quot;github&quot; name=&quot;nesl/platform_build&quot; revision=&quot;refs/tags/android-4.2.2_r1&quot;&gt;
@@ -52,6 +51,21 @@ repo forall $dev_projects -c &apos;git checkout $(git rev-parse $dev_refspec)&ap
           <description>The lunch command passed onto the AOSP build system.</description>
           <defaultValue>full_x86-eng</defaultValue>
         </hudson.model.StringParameterDefinition>
+        <hudson.model.BooleanParameterDefinition>
+          <name>FLAG_NO_SYNC</name>
+          <description></description>
+          <defaultValue>false</defaultValue>
+        </hudson.model.BooleanParameterDefinition>
+        <hudson.model.BooleanParameterDefinition>
+          <name>FLAG_NO_CLOBBER</name>
+          <description></description>
+          <defaultValue>false</defaultValue>
+        </hudson.model.BooleanParameterDefinition>
+        <hudson.model.BooleanParameterDefinition>
+          <name>FLAG_UPDATE_API</name>
+          <description></description>
+          <defaultValue>false</defaultValue>
+        </hudson.model.BooleanParameterDefinition>
       </parameterDefinitions>
     </hudson.model.ParametersDefinitionProperty>
   </properties>
