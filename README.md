@@ -1,8 +1,8 @@
 ___Expected configuration___
 
-`cp -r bin /aosp/bin`
+`cp -r bin /aosp`
 
-`cp -r jobs ${JENKINS_HOME}/jobs`
+`cp -r jobs ${JENKINS_HOME}`
 
   - The Android job requires a local mirror in `/aosp/mirror`
    
