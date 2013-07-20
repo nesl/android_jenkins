@@ -18,7 +18,7 @@ repo init -u https://android.googlesource.com/platform/manifest -b init_tag</des
           <name>dev_refspec</name>
           <description>This is the development branch that will be checked out for *only* the dev_projects, i.e.
 repo forall $dev_projects -c &apos;git checkout $(git rev-parse $dev_refspec)&apos;</description>
-          <defaultValue>github/jb-sensor-firewall</defaultValue>
+          <defaultValue>github/jb-privacy</defaultValue>
         </hudson.model.StringParameterDefinition>
         <hudson.model.TextParameterDefinition>
           <name>local_manifest</name>
@@ -29,10 +29,6 @@ Right after an initial repo sync with android.googlesource.com, the local_manife
 After that, we check out the specified development branch for each dev project. See documentation for dev_refspec and dev_projects</description>
           <defaultValue>&lt;manifest&gt;
   &lt;remote name=&quot;github&quot; fetch=&quot;https://github.com&quot; /&gt;
-  &lt;remove-project name=&quot;platform/build&quot; /&gt;
-  &lt;project path=&quot;build&quot; remote=&quot;github&quot; name=&quot;nesl/platform_build&quot; revision=&quot;refs/tags/android-4.2.2_r1&quot;&gt;
-    &lt;copyfile src=&quot;core/root.mk&quot; dest=&quot;Makefile&quot; /&gt;
-  &lt;/project&gt;
   &lt;remove-project name=&quot;platform/frameworks/native&quot; /&gt;
   &lt;project path=&quot;frameworks/native&quot; remote=&quot;github&quot; name=&quot;nesl/platform_frameworks_native&quot; revision=&quot;refs/tags/android-4.2.2_r1&quot; /&gt;
   &lt;remove-project name=&quot;platform/frameworks/base&quot; /&gt;
@@ -44,26 +40,28 @@ After that, we check out the specified development branch for each dev project. 
           <name>dev_projects</name>
           <description>*Space separated* list of projects for which we will sync changes from the $dev_refspec, i.e.
 repo forall $dev_projects -c &apos;git checkout $(git rev-parse $dev_refspec)&apos;</description>
-          <defaultValue>build frameworks/base frameworks/native</defaultValue>
+          <defaultValue>frameworks/base frameworks/native</defaultValue>
         </hudson.model.StringParameterDefinition>
         <hudson.model.StringParameterDefinition>
           <name>lunch</name>
           <description>The lunch command passed onto the AOSP build system.</description>
-          <defaultValue>full_x86-eng</defaultValue>
+          <defaultValue>full_mako-eng</defaultValue>
         </hudson.model.StringParameterDefinition>
         <hudson.model.BooleanParameterDefinition>
           <name>FLAG_NO_SYNC</name>
-          <description></description>
+          <description>WHEN CHECKED: Does not do repo sync before building.
+
+Useful when you have made quickfixes to the jenkins copy.</description>
           <defaultValue>false</defaultValue>
         </hudson.model.BooleanParameterDefinition>
         <hudson.model.BooleanParameterDefinition>
           <name>FLAG_NO_CLOBBER</name>
-          <description></description>
+          <description>WHEN CHECKED: Does not do &quot;make clobber&quot; before building </description>
           <defaultValue>false</defaultValue>
         </hudson.model.BooleanParameterDefinition>
         <hudson.model.BooleanParameterDefinition>
           <name>FLAG_UPDATE_API</name>
-          <description></description>
+          <description>WHEN CHECKED: Does a &quot;make update-api&quot; before building </description>
           <defaultValue>false</defaultValue>
         </hudson.model.BooleanParameterDefinition>
       </parameterDefinitions>
@@ -82,8 +80,8 @@ repo forall $dev_projects -c &apos;git checkout $(git rev-parse $dev_refspec)&ap
     </hudson.tasks.Shell>
   </builders>
   <publishers>
-    <hudson.tasks.Mailer plugin="mailer@1.4">
-      <recipients>kastur+jenkins_android@gmail.com</recipients>
+    <hudson.tasks.Mailer plugin="mailer@1.5">
+      <recipients>kastur+jenkins_android@gmail.com supriyo.chakraborty+jenkins_android@gmail.com pscggeforce+jenkins_android@gmail.com</recipients>
       <dontNotifyEveryUnstableBuild>false</dontNotifyEveryUnstableBuild>
       <sendToIndividuals>false</sendToIndividuals>
     </hudson.tasks.Mailer>

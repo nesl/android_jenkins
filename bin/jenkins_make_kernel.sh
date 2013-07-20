@@ -9,7 +9,7 @@
 set -e
 REPO='/aosp/bin/repo --trace'
 ANNOTATE="annotate-output +%Y-%m-%d-%H:%M:%S.%N"
-MIRROR=/aosp/kernels_mirror
+MIRROR=/aosp/kernel_mirror
 
 # Replace "/" since we don't want to create nested directories.
 BRANCH_JOB="${JOB_NAME}-${nesl_branch////_}"
@@ -41,12 +41,12 @@ cd ${BUILD_DIR}
 
 $ANNOTATE $REPO init -u $MIRROR/platform/manifest.git 2>&1 >>${LOG_DIR}/repo_init
 
-$ANNOTATE $REPO sync -j8 2>&1 >>${LOG_DIR}/repo_sync_aosp
+$ANNOTATE $REPO sync -f -j8 2>&1 >>${LOG_DIR}/repo_sync_aosp
 $ANNOTATE $REPO forall ${kernel_project} \
   -c 'git checkout $(git rev-parse $aosp_branch)' 2>&1 >>${LOG_DIR}/git_aosp_checkout
 
 echo "${local_manifest}" | tee -a ${LOG_DIR}/local_manifest.xml > .repo/local_manifest.xml
-$ANNOTATE $REPO sync -j8 2>&1 >>${LOG_DIR}/repo_sync_nesl
+$ANNOTATE $REPO sync -f -j8 2>&1 >>${LOG_DIR}/repo_sync_nesl
 $ANNOTATE $REPO forall ${kernel_project} \
   -c 'git checkout $(git rev-parse $nesl_branch)' 2>&1 >>${LOG_DIR}/git_nesl_checkout
 set +v +x
