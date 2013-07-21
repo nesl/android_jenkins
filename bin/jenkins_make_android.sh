@@ -9,7 +9,8 @@
 # dev_projects
 # lunch
 
-set +x
+set -e
+set +xv
 
 DONE_ASCII='
 ---------------------------------
@@ -30,14 +31,12 @@ FAIL_ASCII='
  |_|     /_/   \_\ |___| |_____|
 ---------------------------------
 '
-
-trap "echo \"${FAIL_ASCII}\"" EXIT
-
-function verbose() {
-  (set -v; exec $@)
+function fail() {
+  echo "${FAIL_ASCII}"
 }
 
-set -e
+trap "fail" EXIT
+
 echo "Setting up variables"
 export LANG='en_US.UTF-8'  # The default ASCII encoding causes javac errors.
 export USE_CCACHE=1
@@ -48,11 +47,11 @@ JOB_URL=http://${PUBLIC_FQDN}:8080/job/${JOB_NAME}/
 REPO=/aosp/bin/repo
 #ANNOTATE="annotate-output +%Y-%m-%d-%H:%M:%S.%N"
 ANNOTATE= # Disabled for now.
-FLOCK=/aosp/bin/flock
+FLOCK=flock
 VERBOSE=verbose
 
-if [ FLAGS_use_mirror == "true" && -d /aosp/mirror ]; then
-  INIT_URL=/aosp/mirror
+if [[ FLAG_use_mirror == "true" && -d /aosp/mirror/platform/manifest.git ]]; then
+  INIT_URL=/aosp/mirror/platform/manifest.git
 else
   INIT_URL=https://android.googlesource.com/platform/manifest
 fi
@@ -62,6 +61,7 @@ BRANCH_JOB="${JOB_NAME}-${dev_refspec////_}"
 BRANCH_JOB_NUMBERED=${BRANCH_JOB}-${BUILD_NUMBER}
 LOG_DIR=$WORKSPACE/logs/${BRANCH_JOB_NUMBERED}
 BUILD_DIR=/scratch/aosp/android  # Used to be based on BRANCH_JOB, but no longer.
+export TMPDIR=${BUILD_DIR}/tmp  # used by mktemp
 LOCK_FILE=${BUILD_DIR}/LOCK
 OUT_COPY_DIR=$WORKSPACE/copy/${BRANCH_JOB_NUMBERED}
 SDK_COPY_DIR=$WORKSPACE/copy/${BRANCH_JOB_NUMBERED}
@@ -71,138 +71,149 @@ set -v
 mkdir -p ${BUILD_DIR} 
 cd ${BUILD_DIR}
 
+rm -rf ${TMPDIR}
+mkdir ${TMPDIR}
+
 rm -rf ${LOG_DIR} 
 mkdir -p ${LOG_DIR}
+set +v
+
+function log() {
+  echo $@ >&7
+}
+
+function print_log_urls() {
+  log '-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-'
+  for log in $@; do
+  log STREAMING LOGS $log ${JOB_URL}ws/logs/${BRANCH_JOB_NUMBERED}/$log/'*view*'
+  done;
+  log '-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-'
+}
+
+
+function logz_url() {
+  if [[ FLAG_interactive == "true" ]]; then
+    log '>>logz' $1 '<'${LOG_DIR}/$1'>'
+  else 
+    log '>>logz' $1 '<'${JOB_URL}ws/logs/${BRANCH_JOB_NUMBERED}/$1/'*view*>'
+  fi
+}
+
+if [[ FLAG_color == "true" ]]; then
+bold=`tput bold`
+normal=`tput sgr0`
+blue=`tput setaf 4`
+fi
+
+function logz() {
+  log '+ ' "${bold}${blue}${@:2}${normal}"
+  logz_url "${bold}$1${normal}"
+  eval "${@:2}" 2>&1 | pv -tb -i10 2>&7 | tee -a ${LOG_DIR}/$1 2>&1 > /dev/null
+  ret=$?
+  if [[ $ret -ne 0 ]]; then
+    log "${bold}RETURN CODE=$ret${normal}"
+    log "======== LAST 100 lines of $1 ======="
+    tail -n 100 ${LOG_DIR}/$1 >&7
+    log "============================================"
+    ls -lth ${LOG_DIR} >&7
+    exit $ret
+  fi
+  return $ret
+}
 
 # Acquire lock to prevent two builds on same BUILD_DIR
-# Make sure to unlock on exit via trap.
-touch ${LOCK_FILE}
-trap "$FLOCK --unlock ${LOCK_FILE} && echo \"${FAIL_ASCII}\"" EXIT
-echo "Waiting for lock."
-$FLOCK --exclusive ${LOCK_FILE}
-echo "Acquired exclusive lock."
+(
+7<>`mktemp`
+log "Waiting for lock."
+$FLOCK --wait=$(( 3600 * 3 )) 9  # Wait for upto 3 hours to obtain lock.
+log "Acquired exclusive lock."
 
 # Put a symbolic link to the build directory in jenkins workspace.
 rm -f $WORKSPACE/build_directory
 ln -s ${BUILD_DIR} $WORKSPACE/build_directory
-set +v
 
-function print_log_url() {
-  echo -=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-
-  for log in $@; do
-  echo STREAMING LOGS $log ${JOB_URL}ws/logs/${BRANCH_JOB_NUMBERED}/$log/'*view*'
-  done;
-  echo -=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-
-}
-
-echo "Environment after setup. $(get_log_url SETUP_ENV)"
-(env; java -version) >${LOG_DIR}/SETUP_ENV 2>&1
-
-# For convenience, print urls of log files.
 echo -=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-
 echo SYSTEM DASHBOARD : http://${PUBLIC_FQDN}:8000/cgi/dash
 echo STREAMING LOGS TO: ${JOB_URL}ws/logs/${BRANCH_JOB_NUMBERED}/
 echo -=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-
 
-print_log_url SYNC sync_init sync_aosp sync_override.xml sync_github \
-    sync_checkout sync_drivers sync_status
+logz SETUP_ENV env
+logz SETUP_ENV java -version
+
 (
-set -v
-if [ ${FLAG_NO_SYNC} != "true" ]; then 
+if [[ ${FLAG_NO_SYNC} != "true" ]]; then 
 
   # Remove .repo/local_manifest.xml and .repo/local_manifests directory.
   rm -rf .repo/local_manifest*
 
-  # Sync with AOSP
-  $ANNOTATE $REPO init -u ${INIT_URL}/platform/manifest.git -b ${init_tag} \
-      >${LOG_DIR}/sync_init 2>&1;
-  $ANNOTATE $REPO sync -j8 >${LOG_DIR}/sync_aosp 2>&1; \
+  logz sync_init $ANNOTATE $REPO init \
+      -u ${INIT_URL} -b ${init_tag}
+  logz sync_aosp $ANNOTATE $REPO sync -j8
 
-  # Put override to github, and sync again.
+  # Put override to github and sync again.
   mkdir .repo/local_manifests;
-  echo "${local_manifest}" | tee ${LOG_DIR}/sync_override.xml \
-      > .repo/local_manifests/override.xml;
-  $ANNOTATE $REPO sync -j8 >${LOG_DIR}/sync_github 2>&1;
+  echo "${local_manifest}" > .repo/local_manifests/override.xml
+  logz sync_override_xml cat .repo/local_manifests/override.xml
+  logz sync_github $ANNOTATE $REPO sync -j8
 
   # Checkout the head commit hash of each non-aosp repo.
-  $REPO forall $dev_projects \
-      -c 'git checkout $(git rev-parse $dev_refspec)' \
-      >${LOG_DIR}/sync_checkout 2>&1;
+  logz sync_checkout $REPO forall ${dev_projects} \
+      -c git checkout ${dev_refspec}
 
-  # Have to a reset --hard here!
+  # TODO(krr): do a reset --hard here ?
 
   # If making for MAKO, then extract proprietary drivers.
-  if echo "$lunch" | grep -q mako
-  then
-   tar -xvf /aosp/bin/mako_drivers.tar.gz >${LOG_DIR}/sync_drivers 2>&1;
+  if echo "$lunch" | grep -q mako; then
+   log "Extracting drivers."
+   logz sync_drivers tar -xvf /aosp/bin/mako_drivers.tar.gz
   fi
 fi
 
 # Output the full code diff from init_tag to checked out code
 # just for affected repos
+log "Producing diffs"
 mkdir ${LOG_DIR}/diffs
-$REPO forall ${dev_projects} \
+$ANNOTATE $REPO forall ${dev_projects} \
     -c "LOG_DIR=${LOG_DIR} /aosp/bin/jenkins_make_android_diff.sh"
 
+echo "Doing a repo status and git log -n1" >&7
 # Output the latest commit hash for each project.
-(
-  $VERBOSE ls -la
-  echo "================"
-  $VERBOSE $REPO status 
-  
-  echo "================"
-  $VERBOSE $REPO forall \
-    -c 'echo $REPO_PROJECT && git log --pretty=oneline -n1 && echo "------"'
-) > ${LOG_DIR}/sync_status 2>&1
+logz sync_finish_ls ls -la
+logz sync_finish_repo_status $REPO status 
+logz sync_finish_gitlog $REPO forall frameworks/native -c "'"'echo ${REPO_PROJECT} $(git log -n1 --pretty=oneline)'"'"
 
 ) >${LOG_DIR}/SYNC 2>&1
 
-print_log_url BUILD build_env build_clean build_api build_real
+logz_url BUILD
 (
-set -v
-echo "lunch!"
+log Doing lunch $lunch
 source build/envsetup.sh
 lunch $lunch
 
 # Log execution environment after lunch.
-( \
-  env; \
-  java -version 2>&1; \
-  echo "======"; \
-  prebuilts/misc/linux-x86/ccache/ccache -s; \
-) >${LOG_DIR}/build_env
+logz build_env env; \
+logz build_env java -version 2>&1; \
+logz build_env prebuilts/misc/linux-x86/ccache/ccache -s; \
 
 echo -=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-
 
 test ${FLAG_NO_CLOBBER} == "true" ||
-    $ANNOTATE make clobber >${LOG_DIR}/build_clean 2>&1
+    logz build_clean $ANNOTATE make clobber
 
 test ${FLAG_UPDATE_API} == "false" ||  
-    $ANNOTATE make update-api >${LOG_DIR}/build_api 2>&1
+    logz build_api $ANNOTATE make update-api
 
-# Build android for real.
-set +e
-$ANNOTATE make -j8 >${LOG_DIR}/build_real 2>&1 
-ret_code=$?
-set -e
-
-if [ $ret_code != 0 ]; then
-  echo "======== LAST 100 lines of build log ======="
-  tail -n 100 ${LOG_DIR}/build_real
-  echo "============================================"
-  exit 1 
-fi
+logz build_real $ANNOTATE make -j8
 
 # Since we have 'set -e', SUCCESSFUL will only be created if above succeeds.
 touch ${LOG_DIR}/SUCCESSFUL
 ) >${LOG_DIR}/BUILD 2>&1
 
-print_log_url POST_BUILD
+logz_url POST_BUILD
 (
-set -v
 # Copy the 'out/' folder over to workspace,
 # make sure this is persistent storage!
-if [ ${FLAGS_copy_out} == "true" ]; then
+if [[ ${FLAG_copy_out} == "true" ]]; then
   mkdir -p ${OUT_COPY_DIR}
   cp -r out ${OUT_COPY_DIR}
   touch ${LOG_DIR}/SUCCESSFUL-COPY
@@ -211,3 +222,4 @@ fi
 
 echo "${DONE_ASCII}"
 trap - EXIT
+) 7>&1 9> ${LOCK_FILE}
