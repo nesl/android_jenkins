@@ -2,6 +2,7 @@
 # Author: Kasturi Raghavan (kastur@gmail.com)
 
 # Required args:
+# (Usually provided by jenkin) JOB_NAME, BRANCH_JOB, BUILD_NUMBER
 # init_tag
 # dev_refspec
 # local_manifest
@@ -32,99 +33,136 @@ FAIL_ASCII='
 
 trap "echo \"${FAIL_ASCII}\"" EXIT
 
-set -ve
-export LANG='en_US.UTF-8'  # The default ASCII encoding causes javac errors.
+function verbose() {
+  (set -v; exec $@)
+}
 
+set -e
+echo "Setting up variables"
+export LANG='en_US.UTF-8'  # The default ASCII encoding causes javac errors.
+export USE_CCACHE=1
+export CCACHE_DIR=/scratch/aosp/ccache
 
 PUBLIC_FQDN=android.0x72.com
 JOB_URL=http://${PUBLIC_FQDN}:8080/job/${JOB_NAME}/
-REPO='/aosp/bin/repo'
+REPO=/aosp/bin/repo
 #ANNOTATE="annotate-output +%Y-%m-%d-%H:%M:%S.%N"
-ANNOTATE=
-MIRROR=/aosp/mirror
+ANNOTATE= # Disabled for now.
+FLOCK=/aosp/bin/flock
+VERBOSE=verbose
+
+if [ FLAGS_use_mirror == "true" && -d /aosp/mirror ]; then
+  INIT_URL=/aosp/mirror
+else
+  INIT_URL=https://android.googlesource.com/platform/manifest
+fi
 
 # Replace "/" since we don't want to create nested directories.
 BRANCH_JOB="${JOB_NAME}-${dev_refspec////_}"
 BRANCH_JOB_NUMBERED=${BRANCH_JOB}-${BUILD_NUMBER}
 LOG_DIR=$WORKSPACE/logs/${BRANCH_JOB_NUMBERED}
-BUILD_DIR=/scratch/aosp/${BRANCH_JOB}
-COPY_DIR=$WORKSPACE/copy/${BRANCH_JOB_NUMBERED}
-
-set +v
-# For convenience, print urls of log files.
-echo -=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-
-echo SYSTEM STATS: http://${PUBLIC_FQDN}:8000/cgi/dash
-echo LOGS: ${JOB_URL}ws/logs/${BRANCH_JOB_NUMBERED}/
-echo ==USEFUL LOG FILES==
-echo -=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-
-
-set -v
+BUILD_DIR=/scratch/aosp/android  # Used to be based on BRANCH_JOB, but no longer.
+LOCK_FILE=${BUILD_DIR}/LOCK
+OUT_COPY_DIR=$WORKSPACE/copy/${BRANCH_JOB_NUMBERED}
+SDK_COPY_DIR=$WORKSPACE/copy/${BRANCH_JOB_NUMBERED}
 
 # The LOG_DIR should be unique (i.e. build numbered), but clean to be sure.
+set -v
+mkdir -p ${BUILD_DIR} 
+cd ${BUILD_DIR}
+
 rm -rf ${LOG_DIR} 
 mkdir -p ${LOG_DIR}
 
-# Log some info about the execution environment.
-(env; java -version) > ${LOG_DIR}/info_env
+# Acquire lock to prevent two builds on same BUILD_DIR
+# Make sure to unlock on exit via trap.
+touch ${LOCK_FILE}
+trap "$FLOCK --unlock ${LOCK_FILE} && echo \"${FAIL_ASCII}\"" EXIT
+echo "Waiting for lock."
+$FLOCK --exclusive ${LOCK_FILE}
+echo "Acquired exclusive lock."
 
-mkdir -p ${BUILD_DIR} 
+# Put a symbolic link to the build directory in jenkins workspace.
+rm -f $WORKSPACE/build_directory
+ln -s ${BUILD_DIR} $WORKSPACE/build_directory
+set +v
 
-# Put a symbolic link to this build (w/o build number) in workspace.
-rm -f $WORKSPACE/${BRANCH_JOB}
-ln -s ${BUILD_DIR} $WORKSPACE/${BRANCH_JOB}
+function print_log_url() {
+  echo -=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-
+  for log in $@; do
+  echo STREAMING LOGS $log ${JOB_URL}ws/logs/${BRANCH_JOB_NUMBERED}/$log/'*view*'
+  done;
+  echo -=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-
+}
 
-cd ${BUILD_DIR}
+echo "Environment after setup. $(get_log_url SETUP_ENV)"
+(env; java -version) >${LOG_DIR}/SETUP_ENV 2>&1
 
-# Remove .repo/local_manifest.xml and .repo/local_manifests directory.
-rm -rf .repo/local_manifest*
+# For convenience, print urls of log files.
+echo -=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-
+echo SYSTEM DASHBOARD : http://${PUBLIC_FQDN}:8000/cgi/dash
+echo STREAMING LOGS TO: ${JOB_URL}ws/logs/${BRANCH_JOB_NUMBERED}/
+echo -=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-
 
-if [ ${FLAG_NO_SYNC} != "true" ]
-then
-  set -e
+print_log_url SYNC sync_init sync_aosp sync_override.xml sync_github \
+    sync_checkout sync_drivers sync_status
+(
+set -v
+if [ ${FLAG_NO_SYNC} != "true" ]; then 
+
+  # Remove .repo/local_manifest.xml and .repo/local_manifests directory.
+  rm -rf .repo/local_manifest*
+
   # Sync with AOSP
-  $ANNOTATE $REPO init -u $MIRROR/platform/manifest.git -b ${init_tag} \
-      >${LOG_DIR}/repo_init 2>&1;
-  $ANNOTATE $REPO sync -j8 >${LOG_DIR}/repo_sync_aosp 2>&1; \
+  $ANNOTATE $REPO init -u ${INIT_URL}/platform/manifest.git -b ${init_tag} \
+      >${LOG_DIR}/sync_init 2>&1;
+  $ANNOTATE $REPO sync -j8 >${LOG_DIR}/sync_aosp 2>&1; \
 
   # Put override to github, and sync again.
   mkdir .repo/local_manifests;
-  echo "${local_manifest}" | tee ${LOG_DIR}/override.xml \
+  echo "${local_manifest}" | tee ${LOG_DIR}/sync_override.xml \
       > .repo/local_manifests/override.xml;
-  $ANNOTATE $REPO sync -j8 >${LOG_DIR}/repo_sync_nesl 2>&1;
+  $ANNOTATE $REPO sync -j8 >${LOG_DIR}/sync_github 2>&1;
 
   # Checkout the head commit hash of each non-aosp repo.
   $REPO forall $dev_projects \
       -c 'git checkout $(git rev-parse $dev_refspec)' \
-      >${LOG_DIR}/repo_dev_checkout 2>&1;
+      >${LOG_DIR}/sync_checkout 2>&1;
+
+  # Have to a reset --hard here!
 
   # If making for MAKO, then extract proprietary drivers.
   if echo "$lunch" | grep -q mako
   then
-   tar -xvf /aosp/bin/mako_drivers.tar.gz >${LOG_DIR}/mako_drivers 2>&1;
+   tar -xvf /aosp/bin/mako_drivers.tar.gz >${LOG_DIR}/sync_drivers 2>&1;
   fi
 fi
 
+# Output the full code diff from init_tag to checked out code
+# just for affected repos
 mkdir ${LOG_DIR}/diffs
-
-$REPO forall $dev_projects \
+$REPO forall ${dev_projects} \
     -c "LOG_DIR=${LOG_DIR} /aosp/bin/jenkins_make_android_diff.sh"
 
-( \
-  ls -la; \
-  $REPO forall -c 'echo $REPO_PROJECT && git log -n1 && echo "======"' \
-) > ${LOG_DIR}/info_tree 2>&1
+# Output the latest commit hash for each project.
+(
+  $VERBOSE ls -la
+  echo "================"
+  $VERBOSE $REPO status 
+  
+  echo "================"
+  $VERBOSE $REPO forall \
+    -c 'echo $REPO_PROJECT && git log --pretty=oneline -n1 && echo "------"'
+) > ${LOG_DIR}/sync_status 2>&1
 
+) >${LOG_DIR}/SYNC 2>&1
 
-set +v
-echo -=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-==
+print_log_url BUILD build_env build_clean build_api build_real
+(
+set -v
+echo "lunch!"
 source build/envsetup.sh
 lunch $lunch
-
-export USE_CCACHE=1
-export CCACHE_DIR=/scratch/aosp/ccache
-[ -d ${CCACHE_DIR} ]  # Check that it's a directory.
-
-ccache -s 
 
 # Log execution environment after lunch.
 ( \
@@ -132,12 +170,11 @@ ccache -s
   java -version 2>&1; \
   echo "======"; \
   prebuilts/misc/linux-x86/ccache/ccache -s; \
-) >${LOG_DIR}/info_lunch_env
+) >${LOG_DIR}/build_env
 
 echo -=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-
-set -v -e
 
-test ${FLAG_NO_CLOBBER} == "true" || \
+test ${FLAG_NO_CLOBBER} == "true" ||
     $ANNOTATE make clobber >${LOG_DIR}/build_clean 2>&1
 
 test ${FLAG_UPDATE_API} == "false" ||  
@@ -158,12 +195,19 @@ fi
 
 # Since we have 'set -e', SUCCESSFUL will only be created if above succeeds.
 touch ${LOG_DIR}/SUCCESSFUL
+) >${LOG_DIR}/BUILD 2>&1
 
-# Finally, copy the 'out/' folder over to workspace,
-# i.e. make sure this is persistent storage on EBS, not ephermeral.
-mkdir -p ${COPY_DIR}
-cp -r out ${COPY_DIR}
-touch ${LOG_DIR}/SUCCESSFUL-COPY
+print_log_url POST_BUILD
+(
+set -v
+# Copy the 'out/' folder over to workspace,
+# make sure this is persistent storage!
+if [ ${FLAGS_copy_out} == "true" ]; then
+  mkdir -p ${OUT_COPY_DIR}
+  cp -r out ${OUT_COPY_DIR}
+  touch ${LOG_DIR}/SUCCESSFUL-COPY
+fi
+) >${LOG_DIR}/POST_BUILD 2>&1
 
 echo "${DONE_ASCII}"
 trap - EXIT
