@@ -1,51 +1,51 @@
-	.DS_Store
-	._.DS_Store
-	bin/cgrep
-	bin/cindex
-	bin/csearch
-	bin/email
-	bin/maguro/
-	bin/maguro_drivers.tar.gz
-	bin/mako/
-	bin/mako_drivers.tar.gz
-	bin/repo
-	github_clones/
-	golden_clone/
-	jenkins_home/.owner
-	jenkins_home/Fingerprint cleanup.log
-	jenkins_home/Workspace clean-up.log
-	jenkins_home/config.xml
-	jenkins_home/hudson.maven.MavenModuleSet.xml
-	jenkins_home/hudson.model.UpdateCenter.xml
-	jenkins_home/hudson.scm.CVSSCM.xml
-	jenkins_home/hudson.scm.SubversionSCM.xml
-	jenkins_home/hudson.tasks.Ant.xml
-	jenkins_home/hudson.tasks.Mailer.xml
-	jenkins_home/hudson.tasks.Maven.xml
-	jenkins_home/hudson.tasks.Shell.xml
-	jenkins_home/hudson.triggers.SCMTrigger.xml
-	jenkins_home/identity.key
-	jenkins_home/jenkins.model.JenkinsLocationConfiguration.xml
-	jenkins_home/jenkins.mvn.GlobalMavenConfig.xml
-	jenkins_home/jenkins.security.QueueItemAuthenticatorConfiguration.xml
-	jenkins_home/jobs/android-jb-privacy/builds/
-	jenkins_home/jobs/android-jb-privacy/lastStable
-	jenkins_home/jobs/android-jb-privacy/lastSuccessful
-	jenkins_home/jobs/android-jb-privacy/nextBuildNumber
-	jenkins_home/jobs/android-jb-privacy/workspace/
-	jenkins_home/jobs/android/
-	jenkins_home/jobs/kernel/builds/
-	jenkins_home/jobs/kernel/lastStable
-	jenkins_home/jobs/kernel/lastSuccessful
-	jenkins_home/jobs/kernel/nextBuildNumber
-	jenkins_home/jobs/kernel/workspace/
-	jenkins_home/jobs/local_test/
-	jenkins_home/nodeMonitors.xml
-	jenkins_home/plugins/
-	jenkins_home/queue.xml.bak
-	jenkins_home/secret.key
-	jenkins_home/secret.key.not-so-secret
-	jenkins_home/updates/
-	jenkins_home/userContent/
-	kernel_mirror/
-	mirror/
+.DS_Store
+._.DS_Store
+bin/cgrep
+bin/cindex
+bin/csearch
+bin/email
+bin/maguro/
+bin/maguro_drivers.tar.gz
+bin/mako/
+bin/mako_drivers.tar.gz
+bin/repo
+github_clones/
+golden_clone/
+jenkins_home/.owner
+jenkins_home/Fingerprint cleanup.log
+jenkins_home/Workspace clean-up.log
+jenkins_home/config.xml	
+jenkins_home/hudson.maven.MavenModuleSet.xml
+jenkins_home/hudson.model.UpdateCenter.xml
+jenkins_home/hudson.scm.CVSSCM.xml
+jenkins_home/hudson.scm.SubversionSCM.xml
+jenkins_home/hudson.tasks.Ant.xml
+jenkins_home/hudson.tasks.Mailer.xml
+jenkins_home/hudson.tasks.Maven.xml
+jenkins_home/hudson.tasks.Shell.xml
+jenkins_home/hudson.triggers.SCMTrigger.xml
+jenkins_home/identity.key
+jenkins_home/jenkins.model.JenkinsLocationConfiguration.xml
+jenkins_home/jenkins.mvn.GlobalMavenConfig.xml
+jenkins_home/jenkins.security.QueueItemAuthenticatorConfiguration.xml
+jenkins_home/jobs/android-jb-privacy/builds/
+jenkins_home/jobs/android-jb-privacy/lastStable
+jenkins_home/jobs/android-jb-privacy/lastSuccessful
+jenkins_home/jobs/android-jb-privacy/nextBuildNumber
+jenkins_home/jobs/android-jb-privacy/workspace/
+jenkins_home/jobs/android/
+jenkins_home/jobs/kernel/builds/
+jenkins_home/jobs/kernel/lastStable
+jenkins_home/jobs/kernel/lastSuccessful
+jenkins_home/jobs/kernel/nextBuildNumber
+jenkins_home/jobs/kernel/workspace/
+jenkins_home/jobs/local_test/
+jenkins_home/nodeMonitors.xml
+jenkins_home/plugins/
+jenkins_home/queue.xml.bak
+jenkins_home/secret.key
+jenkins_home/secret.key.not-so-secret
+jenkins_home/updates/
+jenkins_home/userContent/
+kernel_mirror/
+mirror/
