@@ -1,0 +1,9 @@
+#!/bin/bash
+printf 'Content-Type: text/html\n\n'
+echo '<pre>'
+REQUEST_URI='/cgi/tail/job=android-jb-privacy/build=59/log=build_plain'
+IFS=''
+arr=(${REQUEST_URI})
+params=${arr[1]}
+echo "$arr"
+echo '</pre>'

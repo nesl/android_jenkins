@@ -1,0 +1,22 @@
+#!/bin/bash
+
+#printf 'Content-Type: application/x-tar\n\n'
+
+printf 'Content-Type: text/html\n\n'
+
+PRODUCT=mako
+JOB=android-jb-privacy
+REPO_BRANCH_BUILD='latest'
+
+cd /aosp/jenkins_home/jobs/${JOB}/workspace/copy;
+
+if [ "${REPO_BRANCH_BUILD}" = 'latest' ];
+  then cd `ls -t | head -n 1`;
+  else cd ${JOB}-${REPO_BRANCH_BUILD};
+fi
+pwd
+
+cd out/target/product/${PRODUCT};
+export OUTPUT="$(for file in *.img; do echo $(pwd)/$file; done;)"
+
+tar -c --xform='s:^.*/::' $OUTPUT
