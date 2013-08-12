@@ -8,7 +8,6 @@
 # local_manifest
 # dev_projects
 # lunch
-# TARGET
 
 set -e
 set +xv
@@ -168,6 +167,9 @@ if [[ ${FLAG_NO_SYNC} != "true" ]]; then
   echo "${local_manifest}" > .repo/local_manifests/override.xml
   logz sync_override_xml cat .repo/local_manifests/override.xml
   logz sync_github $REPO sync -j8
+
+  #logz sync_fetch $REPO forall ${dev_projects} \
+  #    -c git fetch
 
   # Checkout the head commit hash of each non-aosp repo.
   logz sync_checkout $REPO forall ${dev_projects} \
