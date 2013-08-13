@@ -28,11 +28,12 @@ jenkins_home/identity.key
 jenkins_home/jenkins.model.JenkinsLocationConfiguration.xml
 jenkins_home/jenkins.mvn.GlobalMavenConfig.xml
 jenkins_home/jenkins.security.QueueItemAuthenticatorConfiguration.xml
-jenkins_home/jobs/android-jb-privacy/builds/
-jenkins_home/jobs/android-jb-privacy/lastStable
-jenkins_home/jobs/android-jb-privacy/lastSuccessful
-jenkins_home/jobs/android-jb-privacy/nextBuildNumber
-jenkins_home/jobs/android-jb-privacy/workspace/
+jenkins_home/jobs/android-jb-privacy-copies/
+jenkins_home/jobs/jenkins-jb-privacy/builds/
+jenkins_home/jobs/jenkins-jb-privacy/lastStable
+jenkins_home/jobs/jenkins-jb-privacy/lastSuccessful
+jenkins_home/jobs/jenkins-jb-privacy/nextBuildNumber
+jenkins_home/jobs/jenkins-jb-privacy/workspace/
 jenkins_home/jobs/android/
 jenkins_home/jobs/kernel/builds/
 jenkins_home/jobs/kernel/lastStable
