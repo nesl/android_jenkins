@@ -128,7 +128,7 @@ fi
 if [[ ${FLAG_debug_make} == "true" ]]; then
   MAKE_ARGS="showcommands V=1"
 else
-  MAKE_ARGS="-j8"
+  MAKE_ARGS="-j16"
 fi
 
 REPO="$NICE /aosp/bin/repo"
@@ -160,13 +160,13 @@ if [[ ${FLAG_NO_SYNC} != "true" ]]; then
 
   logz sync_init $REPO init \
       -u ${INIT_URL} -b ${init_tag}
-  logz sync_aosp $REPO sync -j8
+  logz sync_aosp $REPO sync -j16
 
   # Put override to github and sync again.
   mkdir .repo/local_manifests;
   echo "${local_manifest}" > .repo/local_manifests/override.xml
   logz sync_override_xml cat .repo/local_manifests/override.xml
-  logz sync_github $REPO sync -j8
+  logz sync_github $REPO sync -j16
 
   #logz sync_fetch $REPO forall ${dev_projects} \
   #    -c git fetch
