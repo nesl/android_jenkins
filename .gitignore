@@ -5,9 +5,7 @@ bin/cindex
 bin/csearch
 bin/email
 bin/maguro/
-bin/maguro_drivers.tar.gz
 bin/mako/
-bin/mako_drivers.tar.gz
 bin/repo
 github_clones/
 golden_clone/
